@@ -20,44 +20,13 @@ bash# ollama pull llama3.2
 
 ## Create a Custom Modelfile for Security Auditing
 
-Create a file named Modelfile:
-
-```
-FROM llama3.2
-
-# System prompt that specializes the model for security auditing
-SYSTEM """
-You are a specialized AI security code auditor. Analyze provided code for security vulnerabilities including:
-- SQL injection
-- XSS vulnerabilities
-- Authentication flaws
-- CSRF vulnerabilities
-- Insecure direct object references
-- Security misconfigurations
-- Sensitive data exposure
-- Broken access control
-- Insufficient logging & monitoring
-
-For each vulnerability found:
-1. Identify the specific line or section with the issue
-2. Explain why it's vulnerable and potential impact
-3. Provide a secure code alternative
-4. Reference relevant security standards (OWASP, CWE) when applicable
-
-Prioritize findings by severity (Critical, High, Medium, Low).
-"""
-
-# Optional parameters to improve performance
-PARAMETER temperature 0.2
-PARAMETER top_p 0.8
-PARAMETER seed 42
-```
+Create a file named Modelfile. See m-en-kr-01.modelfile for example.
 
 
 ## Create Your Custom Model
 
 ```
-bash# ollama create security-code-audit -f Modelfile
+bash# ollama create m-en-kr-01 -f m-en-kr-01.modelfile
 ```
 
 ## Use the Model for Code Auditing
@@ -65,74 +34,50 @@ bash# ollama create security-code-audit -f Modelfile
 ### Basic Command Line Usage:
 
 ```
-bash# ollama run security-code-audit 
+bash# ollama run m-en-kr-01 
 >>> Send a message (/? for help)
+Translate this to Korean: "Artificial intelligence is transforming industries."
 ```
-Copy and paste the following inference:
 
-```python
-Audit this code for security vulnerabilities:
-def login(username, password):
-    query = \"SELECT * FROM users WHERE username = '\" + username + \"' AND password = '\" + password + \"'\"
-    result = db.execute(query)
-    if result:
-        return generate_session_token()
-    return None
+### From File Usage:
+```
+ollama run translation-ko-en "Translate to Korean: $(cat input.txt)"
 ```
 
 ### Build a Simple Python Interface
 
 This interface is to read a input file, audit the code, and display the result.
 
-- install ollama 
-
-```
-pip install ollama
-```
 - Create a file named `security_audit.py`:
 
 ```python
-import ollama
-import argparse
-import os
+import requests
+import json
 
-def audit_file(file_path):
-    """Audit a single file for security vulnerabilities."""
-    try:
-        with open(file_path, 'r') as f:
-            code = f.read()
-        
-        file_ext = os.path.splitext(file_path)[1][1:]  # Get extension without dot
-        
-        prompt = f"Audit this {file_ext} code for security vulnerabilities:\n```{file_ext}\n{code}\n```"
-        
-        response = ollama.chat(
-            model='security-code-audit',
-            messages=[
-                {
-                    'role': 'user',
-                    'content': prompt
-                }
-            ]
-        )
-        
-        print(f"\n--- SECURITY AUDIT RESULTS FOR {file_path} ---\n")
-        print(response['message']['content'])
-        
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
-
-def main():
-    parser = argparse.ArgumentParser(description='Security code audit tool using Ollama')
-    parser.add_argument('files', nargs='+', help='Files to audit')
+def translate_text(text, source_lang="English", target_lang="Korean"):
+    url = "http://localhost:11434/api/generate"
     
-    args = parser.parse_args()
-    
-    for file_path in args.files:
-        audit_file(file_path)
+    prompt = f"""Translate the following text from {source_lang} to {target_lang}.
 
-if __name__ == "__main__":
-    main()
+Source Text:
+{text}
+
+Translation:"""
+    
+    payload = {
+        "model": "translation-ko-en",
+        "prompt": prompt,
+        "stream": False
+    }
+    
+    response = requests.post(url, json=payload)
+    result = response.json()
+    return result['response']
+
+# 사용 예시
+text = "Machine learning is a subset of artificial intelligence."
+translation = translate_text(text)
+print(translation)
 ```
 
 Usage:
@@ -140,6 +85,116 @@ Usage:
 python security_audit.py vulnerable_code.py 
 ```
 
+
+### Parallel processing sample:
+
+```
+pythonimport concurrent.futures
+import requests
+
+def translate_chunk(chunk_data):
+    chunk_id, text = chunk_data
+    url = "http://localhost:11434/api/generate"
+    
+    payload = {
+        "model": "translation-ko-en",
+        "prompt": f"Translate to Korean:\n{text}",
+        "stream": False
+    }
+    
+    response = requests.post(url, json=payload)
+    return chunk_id, response.json()['response']
+
+# Divide input into chunks
+chunks = [
+    (0, "First paragraph..."),
+    (1, "Second paragraph..."),
+    (2, "Third paragraph..."),
+]
+
+# Parallel translation
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    results = list(executor.map(translate_chunk, chunks))
+
+# Align and merge
+results.sort(key=lambda x: x[0])
+full_translation = "\n\n".join([r[1] for r in results])
+print(full_translation)
+```
+
+
+## Fine-tuning 
+
+### Training data
+
+- JSONL format:
+
+```
+json{"prompt": "Translate to Korean: Hello, world!", "response": "안녕하세요, 세상!"}
+{"prompt": "Translate to Korean: Machine gun", "response": "기관총"}
+```
+
+
+- LoRA Fine-tuning
+
+```
+# unsloth usage
+pip install unsloth
+
+# or Hugging Face PEFT
+pip install peft transformers datasets
+```
+
+## Python script sample:
+
+```python
+
+from unsloth import FastLanguageModel
+import torch
+
+# loading model
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name = "meta-llama/Llama-3.2-3B",
+    max_seq_length = 2048,
+    dtype = None,
+    load_in_4bit = True,
+)
+
+# LoRA
+model = FastLanguageModel.get_peft_model(
+    model,
+    r = 16,
+    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                      "gate_proj", "up_proj", "down_proj"],
+    lora_alpha = 16,
+    lora_dropout = 0,
+    bias = "none",
+    use_gradient_checkpointing = True,
+)
+
+# training ...
+```
+
+
 ## Improve Results with Additional Context
 
-For better results, you can create a more advanced Modelfile that includes examples of common vulnerabilities and their fixes. This technique is called "few-shot prompting" and can significantly improve results without fine-tuning.
+For better results, you can create a more advanced Modelfile that includes examples of common terminology. This technique is called "few-shot prompting" and can significantly improve results without fine-tuning.
+
+### Add to Modelfile:
+PARAMETER num_gpu 1
+PARAMETER num_thread 8
+
+
+### Adjusting Context Window 
+PARAMETER num_ctx 16384  # longer input
+
+
+### Batch processing
+
+bash# 
+OLLAMA_HOST=0.0.0.0:11434 ollama serve &
+OLLAMA_HOST=0.0.0.0:11435 ollama serve &
+OLLAMA_HOST=0.0.0.0:11436 ollama serve &
+
+
+
