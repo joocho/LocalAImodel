@@ -20,35 +20,35 @@ bash# ollama pull llama3.2
 
 ## Create a Custom Modelfile for Security Auditing
 
-Create a file named Modelfile. See m-en-kr-01.modelfile for example.
+Create a file named Modelfile. See defense-translator.modelfile for example.
 
 
 ## Create Your Custom Model
 
 ```
-bash# ollama create m-en-kr-01 -f m-en-kr-01.modelfile
+bash# ollama create defense-translator -f defense-translator.modelfile
 ```
 
-## Use the Model for Code Auditing
+## Use the Model for Translation
 
 ### Basic Command Line Usage:
 
 ```
-bash# ollama run m-en-kr-01 
+bash# ollama run defense-translator 
 >>> Send a message (/? for help)
 Translate this to Korean: "Artificial intelligence is transforming industries."
 ```
 
 ### From File Usage:
 ```
-ollama run translation-ko-en "Translate to Korean: $(cat input.txt)"
+ollama run defense-translator "Translate to Korean: $(cat input.txt)"
 ```
 
 ### Build a Simple Python Interface
 
-This interface is to read a input file, audit the code, and display the result.
+This interface is to read a input file, translate, and display the result.
 
-- Create a file named `security_audit.py`:
+- Create a file named `defense-translator.py`:
 
 ```python
 import requests
@@ -65,7 +65,7 @@ Source Text:
 Translation:"""
     
     payload = {
-        "model": "translation-ko-en",
+        "model": "defense-translator",
         "prompt": prompt,
         "stream": False
     }
@@ -82,7 +82,7 @@ print(translation)
 
 Usage:
 ```
-python security_audit.py vulnerable_code.py 
+python defense_translator.py input.txt 
 ```
 
 

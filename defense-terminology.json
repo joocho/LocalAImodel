@@ -1,0 +1,21 @@
+{
+  "fighter aircraft": "전투기",
+  "ballistic missile": "탄도미사일",
+  "guided missile": "유도탄",
+  "fire control system": "사격통제시스템",
+  "target acquisition": "표적 획득",
+  "radar cross section": "레이더 반사 면적",
+  "night vision device": "야간투시경",
+  "infantry fighting vehicle": "보병전투차",
+  "main battle tank": "주력전차",
+  "surface-to-air missile": "지대공미사일",
+  "air-to-air missile": "공대공미사일",
+  "electronic warfare": "전자전",
+  "command and control": "지휘통제",
+  "logistics support": "군수지원",
+  "ammunition": "탄약",
+  "armored vehicle": "장갑차",
+  "reconnaissance": "정찰",
+  "surveillance": "감시",
+  "machine gun": "기관총"
+}
